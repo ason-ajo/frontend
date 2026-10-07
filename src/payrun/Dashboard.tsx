@@ -5,20 +5,19 @@ import React, {
 	Ref,
 	useCallback,
 	useContext,
+	useEffect,
 	useMemo,
 	useReducer,
 } from "react";
-import {
-	Link as RouterLink,
-	Outlet,
-	useRouteLoaderData,
-	LinkProps,
-} from "react-router-dom";
+import { Link as RouterLink, Outlet, LinkProps } from "react-router-dom";
 import { Stack, Typography, Button, Chip, Box, styled } from "@mui/material";
 import { ContentLayout } from "../components/ContentLayout";
 import { useTranslation } from "react-i18next";
 import { DashboardHeader } from "./DashboardHeader";
-import { PayrunPeriodLoaderData } from "./PayrunPeriodLoaderData";
+import {
+	usePayrunPeriodLoaderData,
+	usePayrunPeriodPolling,
+} from "./PayrunPeriodPolling";
 import { PayrunTabContent, PayrunTabs, Tab } from "./PayrunTabs";
 import { EntryRow } from "./types";
 import { getEmployeeDisplayString } from "../models/Employee";
@@ -37,9 +36,8 @@ export const PayrollTableContext = createContext<PayrollTableContextProps>(
 );
 
 export function PayrunDashboard() {
-	const { payrunPeriod } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { payrunPeriod } = usePayrunPeriodLoaderData();
+	usePayrunPeriodPolling(payrunPeriod);
 	return (
 		<>
 			<PayrunPeriodView key={payrunPeriod.id} />
@@ -49,23 +47,26 @@ export function PayrunDashboard() {
 }
 
 function PayrunPeriodView() {
-	const { payrunPeriod, previousPayrunPeriod, controllingData, salaryTypes } =
-		useRouteLoaderData("payrunperiod") as PayrunPeriodLoaderData;
+	const {
+		payrunPeriod,
+		previousPayrunPeriod,
+		controllingData,
+		salaryTypeByEmployeeId,
+	} = usePayrunPeriodLoaderData();
 	const isOpen = payrunPeriod.periodStatus === "Open";
 	const rows: Array<EntryRow> = useMemo(() => {
 		const controllingDataMap = new Map(
 			controllingData.employeeControllingCases.map((x) => [x.id, x.cases]),
 		);
-		let entries = payrunPeriod.entries.map((entry, index) => ({
+		let entries = payrunPeriod.entries.map((entry) => ({
 			...entry,
 			amount: entry.openPayout ?? 0,
 			previousEntry: previousPayrunPeriod?.entries?.find(
 				(previousEntry) => previousEntry.employeeId == entry.employeeId,
 			),
 			controllingTasks: isOpen ? controllingDataMap.get(entry.employeeId) : [],
-			salaryType: salaryTypes[index],
+			salaryType: salaryTypeByEmployeeId[entry.employeeId] ?? null,
 		}));
-		// filter here, otherwise the index wont match
 		if (!isOpen) {
 			entries = entries.filter((e) => e.isEmployed || e.hasWage);
 		}
@@ -75,8 +76,12 @@ function PayrunPeriodView() {
 		previousPayrunPeriod?.entries,
 		isOpen,
 		controllingData,
+		salaryTypeByEmployeeId,
 	]);
 	const [state, dispatch] = useReducer(reducer, rows, createInitialState);
+	useEffect(() => {
+		dispatch({ type: "set_entries", entries: rows });
+	}, [rows]);
 
 	const header = (
 		<DashboardHeader index>
@@ -178,6 +183,10 @@ export type DashboardAction =
 	| {
 			type: "set_tab";
 			tab: Tab;
+	  }
+	| {
+			type: "set_entries";
+			entries: Array<EntryRow>;
 	  };
 
 function reducer(
@@ -195,6 +204,15 @@ function reducer(
 				selectedTab: action.tab,
 			};
 		}
+		case "set_entries":
+			if (state.entries === action.entries) {
+				return state;
+			}
+			newState = {
+				...state,
+				entries: action.entries,
+			};
+			break;
 		case "set_salary_type":
 			if (state.salaryType === action.salaryType) {
 				return state;
@@ -317,9 +335,7 @@ function getEntryCountByTab(
 function ControllingList() {
 	const { t } = useTranslation();
 	const { state } = useContext(PayrollTableContext);
-	const { controllingData } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { controllingData } = usePayrunPeriodLoaderData();
 	const wageControlling = state.entriesByState["Controlling"];
 	const noWage = state.entriesByState["NoWage"];
 	const errors = state.entriesByState["Error"];

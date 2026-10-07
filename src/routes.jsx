@@ -1117,11 +1117,15 @@ const routeData = [
 						shouldRevalidate: ({ nextUrl }) =>
 							nextUrl.pathname.endsWith("payrunperiods/open"),
 						ErrorBoundary: PayrunErrorBoundary,
-						loader: async ({ params }) => {
+						loader: async ({ params, request }) => {
 							const isOpen = params.payrunPeriodId === "open";
 							const payrunPeriod = isOpen
 								? await getOpenPayrunPeriod(params)
 								: await getPayrunPeriod(params);
+							// polling only needs the period, see usePayrunPeriodPolling
+							if (new URL(request.url).searchParams.has("periodOnly")) {
+								return { payrunPeriod };
+							}
 							if (payrunPeriod === null) {
 								throw new Response("Not found", { status: 404 });
 							}
@@ -1153,13 +1157,19 @@ const routeData = [
 							const salaryTypesSet = [...new Set(salaryTypes)]
 								.filter(Boolean)
 								.sort();
+							const salaryTypeByEmployeeId = Object.fromEntries(
+								payrunPeriod.entries.map((e, index) => [
+									e.employeeId,
+									salaryTypes[index],
+								]),
+							);
 							const payroll = await store.get(payrollAtom);
 							return {
 								payroll,
 								payrunPeriod,
 								previousPayrunPeriod,
 								controllingData,
-								salaryTypes,
+								salaryTypeByEmployeeId,
 								salaryTypesSet,
 								bankAccountDetails,
 							};

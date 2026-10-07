@@ -1,3 +1,4 @@
+import { IdType } from "../models/IdType";
 import { Payroll } from "../models/Payroll";
 import { PayrunPeriod } from "../models/PayrunPeriod";
 import { BankAccountDetails } from "./BankAccountDetails";
@@ -9,6 +10,6 @@ export type PayrunPeriodLoaderData = {
 	previousPayrunPeriod: PayrunPeriod | undefined;
 	controllingData: ControllingData;
 	bankAccountDetails: BankAccountDetails;
-	salaryTypes: Array<string>;
+	salaryTypeByEmployeeId: Record<IdType, string>;
 	salaryTypesSet: Array<string>;
 };

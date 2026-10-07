@@ -1,7 +1,5 @@
-import { Link, useRouteLoaderData } from "react-router-dom";
-import { Employee } from "../models/Employee";
+import { Link } from "react-router-dom";
 import { PayrunPeriod } from "../models/PayrunPeriod";
-import { AvailableCase } from "../models/AvailableCase";
 import dayjs from "dayjs";
 import React, { PropsWithChildren } from "react";
 import { Box, Chip, Divider, IconButton, Stack, Tooltip } from "@mui/material";
@@ -15,20 +13,14 @@ import {
 import { useTranslation } from "react-i18next";
 import { FilterButton } from "./EntryFilter";
 import { CalculatingIndicator } from "./CalculatingIndicator";
-
-type LoaderData = {
-	employees: Array<Employee>;
-	payrunPeriod: PayrunPeriod;
-	previousPayrunPeriod: PayrunPeriod | undefined;
-	controllingTasks: Array<Array<AvailableCase>>;
-};
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 
 type DashboardHeaderProps = {
 	index?: boolean;
 } & PropsWithChildren;
 
 export function DashboardHeader({ index, children }: DashboardHeaderProps) {
-	const { payrunPeriod } = useRouteLoaderData("payrunperiod") as LoaderData;
+	const { payrunPeriod } = usePayrunPeriodLoaderData();
 	const { t } = useTranslation();
 	const periodDate = dayjs.utc(payrunPeriod.periodStart).format("MMMM YYYY");
 	const periodOpen = payrunPeriod.periodStatus === "Open";
