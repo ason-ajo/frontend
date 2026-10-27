@@ -18,14 +18,16 @@ import { FieldPeriodSelector } from "./FieldPeriodSelector";
 
 export const FieldContext = createContext();
 
-export function Field({ field, labelAbove = false }) {
+export function Field({ field, grouped = false }) {
 	const { buildCase, attachments, renderFieldPeriods } =
 		useContext(CaseFormContext);
 	const isReadonly = field.attributes?.["input.readOnly"] ?? false;
 	const required = !field.optional;
 	const theme = useTheme();
 	const mobile = useMediaQuery(theme.breakpoints.down(725));
-	const showLabelAbove = labelAbove && !mobile && hasInputLabel(field);
+	// grouped fields are shown in a row, which leaves no room for period selectors
+	const renderPeriodSelector = renderFieldPeriods && !grouped;
+	const showLabelAbove = grouped && !mobile && hasInputLabel(field);
 	const displayName = !mobile && !showLabelAbove ? field.displayName : "";
 
 	return (
@@ -40,7 +42,10 @@ export function Field({ field, labelAbove = false }) {
 			}}
 		>
 			{mobile ? (
-				<MobileLayout field={field} renderPeriodSelector={renderFieldPeriods} />
+				<MobileLayout
+					field={field}
+					renderPeriodSelector={renderPeriodSelector}
+				/>
 			) : showLabelAbove ? (
 				<FormControl fullWidth>
 					<FormControlLabel
@@ -58,7 +63,7 @@ export function Field({ field, labelAbove = false }) {
 						control={
 							<DefaultLayout
 								field={field}
-								renderPeriodSelector={renderFieldPeriods}
+								renderPeriodSelector={renderPeriodSelector}
 							/>
 						}
 					/>
@@ -66,7 +71,7 @@ export function Field({ field, labelAbove = false }) {
 			) : (
 				<DefaultLayout
 					field={field}
-					renderPeriodSelector={renderFieldPeriods}
+					renderPeriodSelector={renderPeriodSelector}
 				/>
 			)}
 		</FieldContext.Provider>

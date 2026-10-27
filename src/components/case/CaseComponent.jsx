@@ -39,7 +39,7 @@ function FieldGroup({ fields }) {
 		>
 			{fields.map((field) => (
 				<Box key={field.id} flex="1 1 0" minWidth={0}>
-					<Field field={field} labelAbove />
+					<Field field={field} grouped />
 				</Box>
 			))}
 		</Stack>
