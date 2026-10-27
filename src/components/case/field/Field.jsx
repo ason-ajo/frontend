@@ -14,7 +14,10 @@ import { FieldDetails } from "./FieldDescription";
 import { createContext, useContext } from "react";
 import { CaseFormContext } from "../../../scenes/global/CaseForm";
 import { useTheme } from "@emotion/react";
-import { FieldPeriodSelector } from "./FieldPeriodSelector";
+import {
+	FieldPeriodSelector,
+	hasPeriodSelector,
+} from "./FieldPeriodSelector";
 
 export const FieldContext = createContext();
 
@@ -25,8 +28,9 @@ export function Field({ field, grouped = false }) {
 	const required = !field.optional;
 	const theme = useTheme();
 	const mobile = useMediaQuery(theme.breakpoints.down(725));
-	// grouped fields are shown in a row, which leaves no room for period selectors
-	const renderPeriodSelector = renderFieldPeriods && !grouped;
+	// ungrouped fields keep the period columns even when empty, so they align
+	const renderPeriodSelector =
+		renderFieldPeriods && (!grouped || hasPeriodSelector(field));
 	const showLabelAbove = grouped && !mobile && hasInputLabel(field);
 	const displayName = !mobile && !showLabelAbove ? field.displayName : "";
 
