@@ -1,12 +1,8 @@
 import React from "react";
 import { ContentLayout } from "../components/ContentLayout";
 import { useTranslation } from "react-i18next";
-import {
-	useLoaderData,
-	useParams,
-	useRouteLoaderData,
-	useSubmit,
-} from "react-router-dom";
+import { useLoaderData, useParams, useSubmit } from "react-router-dom";
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 import dayjs from "dayjs";
 import {
 	Box,
@@ -18,7 +14,6 @@ import {
 	Typography,
 } from "@mui/material";
 import { Cancel, Download } from "@mui/icons-material";
-import { PayrunPeriod } from "../models/PayrunPeriod";
 import { IdType } from "../models/IdType";
 import { requestPainFileDownload } from "../api/FetchClient";
 import { formatValue, getRowGridSx } from "./utils";
@@ -37,15 +32,9 @@ type PayoutEntry = {
 	amount: number;
 };
 
-type RouteLoaderData = {
-	payrunPeriod: PayrunPeriod;
-};
-
 export function Payouts() {
 	const { t } = useTranslation();
-	const { payrunPeriod } = useRouteLoaderData(
-		"payrunperiod",
-	) as RouteLoaderData;
+	const { payrunPeriod } = usePayrunPeriodLoaderData();
 	const payouts = useLoaderData() as Array<Payout>;
 	const submit = useSubmit();
 
@@ -106,9 +95,7 @@ function PayoutSection({
 }) {
 	const { t } = useTranslation();
 	const params = useParams();
-	const { payrunPeriod } = useRouteLoaderData(
-		"payrunperiod",
-	) as RouteLoaderData;
+	const { payrunPeriod } = usePayrunPeriodLoaderData();
 	const total = payout.entries.reduce((a, b) => a + b.amount, 0);
 	const download = async () => {
 		await requestPainFileDownload(

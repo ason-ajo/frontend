@@ -18,8 +18,7 @@ import React, { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { IdType } from "../models/IdType";
 import { atom, useAtom } from "jotai";
-import { useRouteLoaderData } from "react-router-dom";
-import { PayrunPeriodLoaderData } from "./PayrunPeriodLoaderData";
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 import { PayrollTableContext } from "./Dashboard";
 
 export const FilterButton = React.forwardRef<
@@ -65,9 +64,7 @@ export const FilterButton = React.forwardRef<
 
 function SalaryTypeSection() {
 	const { state, dispatch } = useContext(PayrollTableContext);
-	const { salaryTypesSet } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { salaryTypesSet } = usePayrunPeriodLoaderData();
 	const { t } = useTranslation();
 	const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		let value = (event.target as HTMLInputElement).value;

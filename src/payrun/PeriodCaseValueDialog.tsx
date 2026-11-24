@@ -1,11 +1,6 @@
 import React, { PropsWithChildren, useMemo } from "react";
-import {
-	Link,
-	useLoaderData,
-	useNavigate,
-	useParams,
-	useRouteLoaderData,
-} from "react-router-dom";
+import { Link, useLoaderData, useNavigate, useParams } from "react-router-dom";
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 import { useTranslation } from "react-i18next";
 import { Stack, Typography, Box, Button, SxProps, Theme } from "@mui/material";
 import { formatDate } from "../utils/DateUtils";
@@ -24,7 +19,6 @@ import {
 	ResponsiveDialogClose,
 	ResponsiveDialogContent,
 } from "../components/ResponsiveDialog";
-import { PayrunPeriod } from "../models/PayrunPeriod";
 
 type EventValue = {
 	id: IdType;
@@ -86,9 +80,7 @@ function createColumns(t: TFunction<"translation", undefined>) {
 }
 export function PeriodCaseValueDialog() {
 	const { t } = useTranslation();
-	const { payrunPeriod } = useRouteLoaderData("payrunperiod") as {
-		payrunPeriod: PayrunPeriod;
-	};
+	const { payrunPeriod } = usePayrunPeriodLoaderData();
 	const navigate = useNavigate();
 	const params = useParams();
 	const employeeId = useMemo(

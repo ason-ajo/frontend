@@ -3,8 +3,7 @@ import React, { PropsWithChildren, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { PayrollTableContext } from "./Dashboard";
 import { TabButton } from "../components/TabLink";
-import { useRouteLoaderData } from "react-router-dom";
-import { PayrunPeriodLoaderData } from "./PayrunPeriodLoaderData";
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 
 export type Tab = "Controlling" | "Payable" | "PaidOut";
 
@@ -27,9 +26,7 @@ type PayrunTabProps = {
 
 function PayrunTab({ label, tab }: PayrunTabProps) {
 	const { state, dispatch } = useContext(PayrollTableContext);
-	const { controllingData } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { controllingData } = usePayrunPeriodLoaderData();
 	let itemCount = state.entryCountByTab[tab];
 	let badgeColor = "primary";
 	if (tab === "Controlling") {
@@ -54,9 +51,7 @@ export function PayrunTabContent({
 }: { tab: Tab; emptyText: string } & PropsWithChildren) {
 	const { t } = useTranslation();
 	const { state } = useContext(PayrollTableContext);
-	const { controllingData } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { controllingData } = usePayrunPeriodLoaderData();
 	if (tab !== state.selectedTab) return;
 
 	let itemCount = state.entryCountByTab[tab];

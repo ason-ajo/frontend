@@ -7,8 +7,8 @@ import {
 	useAsyncError,
 	useLoaderData,
 	useParams,
-	useRouteLoaderData,
 } from "react-router-dom";
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 import {
 	Alert,
 	Chip,
@@ -27,14 +27,11 @@ import {
 	Warning,
 } from "@mui/icons-material";
 import { getEmployeeDisplayString } from "../models/Employee";
-import { PayrunDocument, PayrunPeriod } from "../models/PayrunPeriod";
+import { PayrunDocument } from "../models/PayrunPeriod";
 import { IdType } from "../models/IdType";
 
 type LoaderData = {
 	documents: Promise<PayrunDocument[]>;
-};
-type PayrunPeriodLoaderData = {
-	payrunPeriod: PayrunPeriod;
 };
 
 export function PeriodDocuments() {
@@ -49,9 +46,7 @@ export function PeriodDocuments() {
 
 function PayrunPeriodDocuments() {
 	const { documents } = useLoaderData() as LoaderData;
-	const { payrunPeriod } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { payrunPeriod } = usePayrunPeriodLoaderData();
 	return (
 		<Suspense fallback={<LoadingView />}>
 			<Await resolve={documents} errorElement={<ErrorView />}>
@@ -125,9 +120,7 @@ function notNull<T>(x: T): x is NonNullable<T> {
 
 function WageStatementSection() {
 	const { t } = useTranslation();
-	const { payrunPeriod } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { payrunPeriod } = usePayrunPeriodLoaderData();
 	const [open, setOpen] = useState(false);
 	const wageStatements = payrunPeriod.entries
 		.map((entry) => {

@@ -5,7 +5,7 @@ import React, {
 	useMemo,
 	useReducer,
 } from "react";
-import { useRouteLoaderData, useSubmit } from "react-router-dom";
+import { useSubmit } from "react-router-dom";
 import { Stack, Typography, Tooltip, SxProps, Theme, Box } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { Payout } from "./Payouts";
@@ -22,7 +22,7 @@ import {
 import { IdType } from "../models/IdType";
 import { useAtomValue } from "jotai";
 import { columnVisibilityAtom, fullWidthTableAtom } from "./TableSettings";
-import { PayrunPeriodLoaderData } from "./PayrunPeriodLoaderData";
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 import { getRowGridSx, getStickySx } from "./utils";
 import { EntryRow, PayoutTotals, PeriodTotals } from "./types";
 import { columns } from "./TableColumns";
@@ -66,9 +66,7 @@ export const PayrunTable = memo(function PayrunTable({
 	completed,
 }: PayrunTableProps) {
 	const { t } = useTranslation();
-	const { payrunPeriod } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { payrunPeriod } = usePayrunPeriodLoaderData();
 
 	const [state, dispatch] = useReducer(reducer, entries, createInitialState);
 

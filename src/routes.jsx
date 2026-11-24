@@ -141,6 +141,10 @@ import { CompanyTabbedView } from "./company/CompanyTabbedView";
 import { CompanyReports } from "./company/CompanyReports";
 import { OnboardingView } from "./company/OnboardingView";
 import { PayrunErrorBoundary } from "./payrun/PayrunErrorBoundary";
+import {
+	PayrunPeriodLiveRoute,
+	PayrunPeriodRoute,
+} from "./payrun/PayrunPeriodPolling";
 import { WageTypeList } from "./company/WageTypeList";
 import { PayrollSettings, ConfirmTransmissionDialog } from "./payroll/Settings";
 import { NewPayrollView } from "./payroll/NewPayrollView";
@@ -471,6 +475,24 @@ function createRouteEmployeeNew(path, createUrlRedirect) {
 	};
 }
 
+function getPayrunPeriodOrOpen(params) {
+	return params.payrunPeriodId === "open"
+		? getOpenPayrunPeriod(params)
+		: getPayrunPeriod(params);
+}
+
+/**
+ * Polling revalidates the current url without a submission,
+ * see PayrunPeriodLiveRoute.
+ */
+function isPayrunPeriodPolling({ currentUrl, nextUrl, formMethod }) {
+	return !formMethod && currentUrl.href === nextUrl.href;
+}
+
+function skipPayrunPeriodPolling(args) {
+	return !isPayrunPeriodPolling(args) && args.defaultShouldRevalidate;
+}
+
 function createRoutePayrunPeriodDocument() {
 	return [
 		{
@@ -483,6 +505,7 @@ function createRoutePayrunPeriodDocument() {
 					document: getPayrunPeriodDocument(params, report, variant),
 				});
 			},
+			shouldRevalidate: skipPayrunPeriodPolling,
 		},
 		{
 			path: ":payrunPeriodId/entries/:payrunPeriodEntryId/doc/:documentId",
@@ -494,6 +517,7 @@ function createRoutePayrunPeriodDocument() {
 					document: getPayrunPeriodEntryDocument(params, report, variant),
 				});
 			},
+			shouldRevalidate: skipPayrunPeriodPolling,
 		},
 	];
 }
@@ -1114,18 +1138,14 @@ const routeData = [
 						handle: {
 							newEventRoot: true,
 						},
-						shouldRevalidate: ({ nextUrl }) =>
-							nextUrl.pathname.endsWith("payrunperiods/open"),
+						shouldRevalidate: (args) =>
+							!isPayrunPeriodPolling(args) &&
+							args.nextUrl.pathname.endsWith("payrunperiods/open"),
 						ErrorBoundary: PayrunErrorBoundary,
-						loader: async ({ params, request }) => {
+						Component: PayrunPeriodRoute,
+						loader: async ({ params }) => {
 							const isOpen = params.payrunPeriodId === "open";
-							const payrunPeriod = isOpen
-								? await getOpenPayrunPeriod(params)
-								: await getPayrunPeriod(params);
-							// polling only needs the period, see usePayrunPeriodPolling
-							if (new URL(request.url).searchParams.has("periodOnly")) {
-								return { payrunPeriod };
-							}
+							const payrunPeriod = await getPayrunPeriodOrOpen(params);
 							if (payrunPeriod === null) {
 								throw new Response("Not found", { status: 404 });
 							}
@@ -1166,7 +1186,6 @@ const routeData = [
 							const payroll = await store.get(payrollAtom);
 							return {
 								payroll,
-								payrunPeriod,
 								previousPayrunPeriod,
 								controllingData,
 								salaryTypeByEmployeeId,
@@ -1176,136 +1195,161 @@ const routeData = [
 						},
 						children: [
 							{
-								index: true,
-								id: "payrunperiodview",
-								Component: PayrunDashboard,
-								action: async ({ params, request }) => {
-									const formData = await request.formData();
-									const payrunPeriodId = formData.get("payrunPeriodId");
-									const payout = JSON.parse(formData.get("payout"));
-									const response1 = await createPayout(
-										{ ...params, payrunPeriodId },
-										payout,
-									);
-									// const [response1, response2] = await Promise.all([createPayout({ ...params, payrunPeriodId }, payout), createPayout({ ...params, payrunPeriodId }, payout)]);
-									if (response1.ok) {
-										toast("success", "Payout created");
-										const createdPayout = await response1.json();
-										const bytes = base64ToBytes(createdPayout.painFile.content);
-										const blob = new Blob([bytes], {
-											type: createdPayout.painFile.contentType,
-										});
-										await downloadData(blob, getPayoutFileName(createdPayout));
-										return redirect("payouts");
-									}
-									toast("error", "Error while creating the payout");
-									return null;
-								},
-							},
-							{
-								Component: PayrunDashboard,
-								children: [...createRoutePayrunPeriodDocument()],
-							},
-							{
-								id: "payrunperiodreview",
-								path: "review",
-								Component: ReviewOpenPeriod,
-								children: [...createRoutePayrunPeriodDocument()],
-								shouldRevalidate: () => false,
+								// the payrun period itself, revalidated while polling
+								Component: PayrunPeriodLiveRoute,
 								loader: async ({ params }) => {
-									if (!params.payrunPeriodId === "open") {
-										return redirect("..");
+									const payrunPeriod = await getPayrunPeriodOrOpen(params);
+									if (payrunPeriod === null) {
+										throw new Response("Not found", { status: 404 });
 									}
-									async function errorHandlingPeriodDocuments() {
-										const response = await getPayrunPeriodDocuments(params);
-										if (!response.ok) {
-											throw response;
-										}
-										return response.json();
-									}
-									return defer({
-										documents: errorHandlingPeriodDocuments(),
-									});
+									return { payrunPeriod };
 								},
-								action: async ({ params, request }) => {
-									const formData = await request.formData();
-									const payrunPeriodId = formData.get("payrunPeriodId");
-									const closePeriodResponse = await closePayrunPeriod({
-										...params,
-										payrunPeriodId,
-									});
-									if (closePeriodResponse.ok) {
-										toast("success", "Payrun period closed");
-										return redirect("..");
-									}
-									// the close button is disabled when the period cannot be closed, a rejection
-									// only happens on stale data (e.g. reports with errors)
-									if (closePeriodResponse.status === 400) {
-										const reason = await closePeriodResponse.text();
-										toast("error", "Could not close period: {{reason}}", { reason });
-										return null;
-									}
-									toast("error", "Could not close period.");
-									return null;
-								},
-							},
-							{
-								path: "payouts",
-								Component: Payouts,
-								loader: async ({ params }) => {
-									if (params.payrunPeriodId === "open") {
-										const openPayrunPeriod = await getOpenPayrunPeriod(params);
-										params.payrunPeriodId = openPayrunPeriod.id;
-									}
-									return getPayouts(params);
-								},
-								action: async ({ params, request }) => {
-									const formData = await request.formData();
-									const payrunPeriodId = formData.get("payrunPeriodId");
-									const payoutId = formData.get("payoutId");
-									const response = await cancelPayout({
-										...params,
-										payrunPeriodId,
-										payoutId,
-									});
-									if (response.ok) {
-										toast("success", "Cancelled payout");
-									} else {
-										toast("error", "Error while cancelling the payout");
-									}
-									return null;
-								},
-							},
-							{
-								id: "payrunperioddocuments",
-								path: "documents",
-								Component: ClosedPeriodDocuments,
-								loader: async ({ params }) => {
-									const response = await getPayrunPeriodDocuments(params);
-									return {
-										documents: await response.json(),
-									};
-								},
-								children: [...createRoutePayrunPeriodDocument()],
-							},
-							{
-								path: "entries/:payrunPeriodEntryId/events",
-								Component: PayrunDashboard,
 								children: [
 									{
 										index: true,
-										Component: PeriodCaseValueDialog,
-										loader: async ({ params }) => {
-											let payrunPeriodId = params.payrunPeriodId;
-											if (payrunPeriodId === "open") {
-												const payrunPeriod = await getOpenPayrunPeriod(params);
-												payrunPeriodId = payrunPeriod.id;
+										id: "payrunperiodview",
+										Component: PayrunDashboard,
+										action: async ({ params, request }) => {
+											const formData = await request.formData();
+											const payrunPeriodId = formData.get("payrunPeriodId");
+											const payout = JSON.parse(formData.get("payout"));
+											const response1 = await createPayout(
+												{ ...params, payrunPeriodId },
+												payout,
+											);
+											// const [response1, response2] = await Promise.all([createPayout({ ...params, payrunPeriodId }, payout), createPayout({ ...params, payrunPeriodId }, payout)]);
+											if (response1.ok) {
+												toast("success", "Payout created");
+												const createdPayout = await response1.json();
+												const bytes = base64ToBytes(
+													createdPayout.painFile.content,
+												);
+												const blob = new Blob([bytes], {
+													type: createdPayout.painFile.contentType,
+												});
+												await downloadData(
+													blob,
+													getPayoutFileName(createdPayout),
+												);
+												return redirect("payouts");
 											}
-											return getPayrunPeriodCaseValues({
+											toast("error", "Error while creating the payout");
+											return null;
+										},
+									},
+									{
+										Component: PayrunDashboard,
+										children: [...createRoutePayrunPeriodDocument()],
+									},
+									{
+										id: "payrunperiodreview",
+										path: "review",
+										Component: ReviewOpenPeriod,
+										children: [...createRoutePayrunPeriodDocument()],
+										shouldRevalidate: () => false,
+										loader: async ({ params }) => {
+											if (!params.payrunPeriodId === "open") {
+												return redirect("..");
+											}
+											async function errorHandlingPeriodDocuments() {
+												const response = await getPayrunPeriodDocuments(params);
+												if (!response.ok) {
+													throw response;
+												}
+												return response.json();
+											}
+											return defer({
+												documents: errorHandlingPeriodDocuments(),
+											});
+										},
+										action: async ({ params, request }) => {
+											const formData = await request.formData();
+											const payrunPeriodId = formData.get("payrunPeriodId");
+											const closePeriodResponse = await closePayrunPeriod({
 												...params,
 												payrunPeriodId,
 											});
+											if (closePeriodResponse.ok) {
+												toast("success", "Payrun period closed");
+												return redirect("..");
+											}
+											// the close button is disabled when the period cannot be closed, a rejection
+											// only happens on stale data (e.g. reports with errors)
+											if (closePeriodResponse.status === 400) {
+												const reason = await closePeriodResponse.text();
+												toast("error", "Could not close period: {{reason}}", {
+													reason,
+												});
+												return null;
+											}
+											toast("error", "Could not close period.");
+											return null;
 										},
+									},
+									{
+										path: "payouts",
+										Component: Payouts,
+										loader: async ({ params }) => {
+											if (params.payrunPeriodId === "open") {
+												const openPayrunPeriod =
+													await getOpenPayrunPeriod(params);
+												params.payrunPeriodId = openPayrunPeriod.id;
+											}
+											return getPayouts(params);
+										},
+										shouldRevalidate: skipPayrunPeriodPolling,
+										action: async ({ params, request }) => {
+											const formData = await request.formData();
+											const payrunPeriodId = formData.get("payrunPeriodId");
+											const payoutId = formData.get("payoutId");
+											const response = await cancelPayout({
+												...params,
+												payrunPeriodId,
+												payoutId,
+											});
+											if (response.ok) {
+												toast("success", "Cancelled payout");
+											} else {
+												toast("error", "Error while cancelling the payout");
+											}
+											return null;
+										},
+									},
+									{
+										id: "payrunperioddocuments",
+										path: "documents",
+										Component: ClosedPeriodDocuments,
+										loader: async ({ params }) => {
+											const response = await getPayrunPeriodDocuments(params);
+											return {
+												documents: await response.json(),
+											};
+										},
+										shouldRevalidate: skipPayrunPeriodPolling,
+										children: [...createRoutePayrunPeriodDocument()],
+									},
+									{
+										path: "entries/:payrunPeriodEntryId/events",
+										Component: PayrunDashboard,
+										children: [
+											{
+												index: true,
+												Component: PeriodCaseValueDialog,
+												loader: async ({ params }) => {
+													let payrunPeriodId = params.payrunPeriodId;
+													if (payrunPeriodId === "open") {
+														const payrunPeriod =
+															await getOpenPayrunPeriod(params);
+														payrunPeriodId = payrunPeriod.id;
+													}
+													return getPayrunPeriodCaseValues({
+														...params,
+														payrunPeriodId,
+													});
+												},
+												shouldRevalidate: skipPayrunPeriodPolling,
+											},
+										],
 									},
 								],
 							},

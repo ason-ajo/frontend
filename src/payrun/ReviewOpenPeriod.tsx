@@ -1,13 +1,7 @@
 import React, { Suspense, useMemo, useState } from "react";
 import { ContentLayout } from "../components/ContentLayout";
 import { useTranslation } from "react-i18next";
-import {
-	Await,
-	Form,
-	useLoaderData,
-	useNavigation,
-	useRouteLoaderData,
-} from "react-router-dom";
+import { Await, Form, useLoaderData, useNavigation } from "react-router-dom";
 import {
 	Alert,
 	Button,
@@ -27,14 +21,13 @@ import {
 } from "../components/ResponsiveDialog";
 import { DashboardHeader } from "./DashboardHeader";
 import { PeriodDocuments } from "./PeriodDocuments";
-import { PayrunPeriodLoaderData } from "./PayrunPeriodLoaderData";
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 
 export function ReviewOpenPeriod() {
 	const { t } = useTranslation();
 	const { documents } = useLoaderData();
-	const { payroll, payrunPeriod, controllingData } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { payroll, payrunPeriod, controllingData } =
+		usePayrunPeriodLoaderData();
 	const navigation = useNavigation();
 	const hasOpenPayouts = useMemo(
 		() => payrunPeriod.entries.some((entry) => entry.openPayout > 0),

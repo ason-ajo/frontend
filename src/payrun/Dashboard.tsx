@@ -14,10 +14,7 @@ import { Stack, Typography, Button, Chip, Box, styled } from "@mui/material";
 import { ContentLayout } from "../components/ContentLayout";
 import { useTranslation } from "react-i18next";
 import { DashboardHeader } from "./DashboardHeader";
-import {
-	usePayrunPeriodLoaderData,
-	usePayrunPeriodPolling,
-} from "./PayrunPeriodPolling";
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 import { PayrunTabContent, PayrunTabs, Tab } from "./PayrunTabs";
 import { EntryRow } from "./types";
 import { getEmployeeDisplayString } from "../models/Employee";
@@ -37,7 +34,6 @@ export const PayrollTableContext = createContext<PayrollTableContextProps>(
 
 export function PayrunDashboard() {
 	const { payrunPeriod } = usePayrunPeriodLoaderData();
-	usePayrunPeriodPolling(payrunPeriod);
 	return (
 		<>
 			<PayrunPeriodView key={payrunPeriod.id} />

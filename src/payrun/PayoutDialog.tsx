@@ -10,13 +10,13 @@ import {
 import React, { PropsWithChildren } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigation, useRouteLoaderData } from "react-router-dom";
+import { useNavigation } from "react-router-dom";
 import { DatePicker } from "../components/DatePicker";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import dayjs, { Dayjs } from "dayjs";
 import { BankAccountDetails } from "./BankAccountDetails";
 import { formatValue, getRowGridSx } from "./utils";
-import { PayrunPeriodLoaderData } from "./PayrunPeriodLoaderData";
+import { usePayrunPeriodLoaderData } from "./PayrunPeriodPolling";
 
 type PayoutDialogProps = {
 	employeeCount: number;
@@ -36,9 +36,7 @@ export function PayoutDialog({
 }: PayoutDialogProps) {
 	const navigation = useNavigation();
 	const { t } = useTranslation();
-	const { bankAccountDetails } = useRouteLoaderData(
-		"payrunperiod",
-	) as PayrunPeriodLoaderData;
+	const { bankAccountDetails } = usePayrunPeriodLoaderData();
 	const [open, setOpen] = useState<boolean>(false);
 	const [valueDate, setValueDate] = useState<Dayjs | null>(dayjs());
 	const [valueDateValid, setValueDateValid] = useState<boolean>(true);
